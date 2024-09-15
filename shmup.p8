@@ -40,6 +40,8 @@ function startgame()
  enemies={}
  enemiesinit()
  
+ explosions={}
+ 
  timershoot=0
  inv=0
  
@@ -75,6 +77,7 @@ function update_game()
  muzzleupdt()
  animbullet()
  animenemies()
+ animexpl()
 
  timepassing()
  starmoving()
@@ -141,10 +144,23 @@ function draw_game()
   end	
 	end
 	
-	drawarray(enemies)
- drawarray(bullets)
+	for enm in all(enemies) do
+		if enm.flash > 0 then 
+		 enm.flash -=1
+		 for i=1,15 do
+		  pal(i,7)
+		 end
+		end
+  drawsprite(enm)
+  pal()
+	end
+	
+	for blt in all(bullets) do
+  drawsprite(blt)
+	end
 
  muzzledraw()
+ expldraw()
  
  uitimer()
  uilives()
@@ -380,11 +396,11 @@ function drawsprite(sp)
  spr(sp.spr,sp.x,sp.y)
 end
 
-function drawarray(ar)
- for i in all(ar) do
-  spr(i.spr,i.x,i.y)
- end
-end
+--function drawarray(ar)
+-- for i in all(ar) do
+--  spr(i.spr,i.x,i.y)
+-- end
+--end
 
 -->8
 -- stars
@@ -428,8 +444,16 @@ end
 -- enemies
 
 function enemiesinit()
+ for i=1,3 do
+  spawnenemy()
+ end
+end
+
+function spawnenemy()
  local enm = {
-  x=120,y=64,spr=35,spd=1,dir=1}
+  x=120,y=flr(rnd(128)-8),
+  spr=35,spd=1,dir=1,
+  hp=3,flash=0}
  add(enemies, enm)
 end
 
@@ -452,10 +476,8 @@ function animenemies()
   end
  end
  
- if #enemies == 0 then 
-  local enm = {
-  x=120,y=flr(rnd(128)-8),spr=35,spd=1,dir=1}
-  add(enemies, enm) 
+ if #enemies < 3 then 
+  spawnenemy()
  end
  
 end
@@ -484,13 +506,14 @@ end
 
 function colcheck()
 
+ local invtime = 60
  if inv <= 0 then
 	 for enm in all(enemies) do
 	  if col(enm,ship,1,6,0,7,0,7,0,7) then
 	   lives-=1
 	   sfx(2)
 	   del(enemies,enm)
-	   inv=30
+	   inv=invtime
 	  end
 	 end
 	elseif inv > 0 then
@@ -500,25 +523,50 @@ function colcheck()
  for enm in all(enemies) do
   for bul in all(bullets) do
    if col(enm,bul,1,6,0,7,1,6,1,6) then
-    sfx(4)
-    del(enemies,enm)
+    enm.hp-=1
+    enm.flash=3
+    if enm.hp<=0 then
+   	 explosion(enm.x,enm.y)
+    	sfx(4)
+    	del(enemies,enm)
+    else
+     sfx(5)
+    end
     del(bullets,bul)
---    explosion(enm.x,enm.y)
    end
   end
  end
  
 end
 
---function explosion(x,y)
--- for i=1,6 do
---  local radius = flr(rnd(5))
---  circfill(x+flr(rnd(13)-3),
---   y+flr(rnd(13-3)),
---   radius,
---   rnd(1)+9)
--- end
---end
+function explosion(coordx,coordy)
+
+ for i=1,(rnd(3)+6) do
+ local clrchoice = {7,9,10,15}
+ local expl = 
+  {x=coordx+flr(rnd(13)-3),
+  y=coordy+flr(rnd(13)-3),
+  r=flr(rnd(4)+3),
+  clr=clrchoice[flr(rnd(3)+1)] }
+ add(explosions,expl)
+  
+ end
+end
+
+function animexpl()
+ for expl in all(explosions) do
+  expl.r-=1
+  if expl.r<=0 then
+   del(explosions,expl)
+  end
+ end
+end
+
+function expldraw()
+	for expl in all(explosions) do
+	 circfill(expl.x,expl.y,expl.r,expl.clr)
+	end
+end
 __gfx__
 000000002ee900002ee9000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000128e9a00128e9a002ee90000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -654,6 +702,7 @@ __sfx__
 480300002e55038550175501d55029500105501f500015501c5000055009500305003850000500005000050000500005000050000500005000050000500005000050000500005000050000500005000050000500
 000f00001b0501f050230502505000000280502a0502c0502d0502f0502c0502c0002a0002d0002a0503305034050380503d050315003f0503f0503f0503f0502a00035000310002c00028000220002200000000
 000400001e65019600206500765021650386002260022600236002460026600266003960034600356003660036600376003860032600006000060000600006000060000600006000060000600006000060000600
+000100002572021700007000070000700007000070000700007000070000700007000070000700007000070000700007000070000700007000070000700007000070000700007000070000700007000070000700
 __music__
 00 43424344
 00 43424344
