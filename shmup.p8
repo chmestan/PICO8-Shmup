@@ -43,6 +43,7 @@ function startgame()
  explosions={}
  part={}
  shwaves={}
+ sparks={}
  
  timershoot=0
  inv=0
@@ -514,7 +515,7 @@ function colcheck()
 	  if col(enm,ship,1,6,0,7,0,7,0,7) then
 	   lives-=1
 	   sfx(5)
-	   explosion(ship.x,ship.y,{13,5,12})
+	   explosion(ship.x,ship.y,{13,5,12},15)
 	   del(enemies,enm)
 	   inv=invtime
 	  end
@@ -529,12 +530,12 @@ function colcheck()
     enm.hp-=1
     enm.flash=3
     if enm.hp<=0 then
-   	 explosion(enm.x,enm.y,{10,7,9})
+   	 explosion(enm.x,enm.y,{10,7,9},10)
     	sfx(4)
     	del(enemies,enm)
     else
      sfx(6)
-     shwave(bul.x+7,bul.y+4,2,6,7,1)
+     shwave(bul.x+7,bul.y+4,2,6,7,1,25)
     end
     del(bullets,bul)
    end
@@ -543,43 +544,56 @@ function colcheck()
  
 end
 
-function explosion(coordx,coordy,clrchoice)
+function explosion(coordx,coordy,clrchoice,q_p)
 
- shwave(coordx,coordy,3,30,7,3)
+ shwave(coordx,coordy,3,25,7,3,25)
  for i=1,15 do
  local expl = 
   {x=coordx+flr(rnd(16)-3),
   y=coordy+flr(rnd(16)-3),
   r=flr(rnd(5)+3),
   clr=clrchoice[flr(rnd(3)+1)],
-  sx=(rnd()-0.5) *2,
-  sy=(rnd()-0.5) *2,
+  sx=(rnd()-0.5) *4,
+  sy=(rnd()-0.5) *4,
   hp=15}
  add(explosions,expl)
  end
- for i=1, 20 do
+ for i=1, q_p do
  	local p = 
 	  {x=coordx+flr(rnd(20)-5),
 	  y=coordy+flr(rnd(20)-5),
 	  sx=(rnd()-0.5) *3,
 	  sy=(rnd()-0.5) *3,
-	  clr = clrchoice[1], 
+	  clr = clrchoice[rnd(3)+1], 
 	  hp=7}
 	 add(part,p)
  end 
 
 end
 
-function shwave(shx,shy,r,tr,clr,spd)
+function shwave(shx,shy,r,tr,clr,spd,q_p)
  local wave=
   {x=shx,y=shy,r=r,tr=tr,clr=clr,spd=spd}
  add(shwaves, wave)
+ for i=1, q_p do
+ 	local p = 
+	  {x=shx+flr(rnd(20)-5),
+	  y=shy+flr(rnd(20)-5),
+	  sx=(rnd()-0.5) *3*spd,
+	  sy=(rnd()-0.5) *3*spd,
+	  clr = 7, 
+	  hp=rnd(10)+10}
+	 add(part,p)
+ end 
+ 
 end
 
 function animexpl()
  for expl in all(explosions) do
   expl.x += expl.sx
 	 expl.y += expl.sy
+	 expl.sx*=0.85
+	 expl.sy*=0.85
 	 expl.hp-=1
 	 expl.r=max(expl.r-0.5,1) 
 	 if expl.hp <= 2 then
@@ -596,8 +610,15 @@ function animexpl()
   p.hp-=1
   p.x += p.sx
 	 p.y += p.sy
+	 --p.sx*=0.7
+	 --p.sy*=0.7
+	 
   if p.hp<=0 then
    del(part,p)
+  elseif p.hp <=1 then
+   p.clr = 2
+  elseif p.hp <= 3 then
+   p.clr = 10
   end
  end
 end
@@ -613,7 +634,7 @@ function expldraw()
 	 wave.r+=wave.spd
 	 if wave.r > wave.tr then
 	  del(shwaves,wave)
-	 elseif	wave.r >= 25 then
+	 elseif	wave.r >= 20 then
 	  wave.clr = 1
 	 elseif wave.r >= 15 then
 	  wave.clr = 13
@@ -623,6 +644,7 @@ function expldraw()
 	for p in all(part) do
 	 pset(p.x,p.y,p.clr)
 	end
+
 end
 __gfx__
 000000002ee900002ee9000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
