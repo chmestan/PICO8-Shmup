@@ -14,12 +14,15 @@ end
 function startgame()
  cls(0)
  
+ wave=1
+ wavetime=64
+ 
  ship=
   {x=20,y=64,
   sx=1,sy=2,
   spr=1}
 
-	speedx=1
+	speedx=1.5
 	speedy=2
  
  --anim
@@ -38,7 +41,7 @@ function startgame()
  bullets={}
  
  enemies={}
- enemiesinit()
+ --enemiesinit()
  
  explosions={}
  part={}
@@ -48,7 +51,7 @@ function startgame()
  timershoot=0
  inv=0
  
- mode = "game"
+ mode = "wavetxt"
  
 end
 -->8
@@ -61,10 +64,14 @@ function _update()
 	 update_game()
 	elseif mode == "start" then
 	 update_start()
+	elseif mode == "wavetxt" then
+	 update_wavetxt()
 	elseif mode == "over" then
 	 update_over()
 	elseif mode == "trans" then
 	 update_trans()
+	elseif mode == "win" then
+	 update_win()
 	end
 
 end
@@ -95,15 +102,29 @@ function update_game()
 end
 
 function update_start()
- if btnp(5) then
-  mode="trans"
- end
+ if btn(5) == false then
+  btnreleased = true
+	end
+	
+	if btnreleased then
+		if btnp(5) then
+	  mode = "trans"
+	  btnreleased = false
+	 end
+	end
 end
 
 function update_over()
- if btnp(5) then
-  mode ="trans"
- end
+ if btn(5) == false then
+  btnreleased = true
+	end
+	
+	if btnreleased then
+		if btnp(5) then
+	  mode = "start"
+	  btnreleased = false
+	 end
+	end
 end
 
 function update_trans()
@@ -115,6 +136,27 @@ function update_trans()
  end
 end
 
+function update_wavetxt()
+ update_game()
+ wavetime-=1
+ if wavetime <= 0 then
+ 	spawnwave()
+  mode ="game"
+ end
+end
+
+function update_win()
+	if btn(5) == false then
+  btnreleased = true
+	end
+	
+	if btnreleased then
+		if btnp(5) then
+	  mode = "start"
+	  btnreleased = false
+	 end
+	end
+end
 -->8
 -- draw
 
@@ -124,10 +166,14 @@ function _draw()
 	 draw_game()
 	elseif mode == "start" then
 	 draw_start()
+	elseif mode == "wavetxt" then
+	 draw_wavetxt()
 	elseif mode == "over" then
 	 draw_over()
  elseif mode =="trans" then
   draw_trans()
+ elseif	mode == "win" then
+  draw_win()
 	end
 
 end
@@ -190,7 +236,7 @@ end
 function draw_over()
  cls(0)
  print("game over!",44,40,8)
- print("press x key to restart",20,80,blink())
+ print("press x key to restart",20,80,blink({8,4,4,20,4,4}))
 end
 
 function draw_trans()
@@ -212,6 +258,18 @@ function draw_trans()
 	   end
 	 end
  end
+end
+
+function draw_wavetxt()
+ draw_game()
+ print("wave "..wave,56,40,blink({4,2,2,10,2,2}))
+end
+
+function draw_win()
+ cls(0)
+ print("congratulations",44,40,8)
+ print("press x key to restart",20,80,blink({8,4,4,20,4,4}))
+
 end
 -->8
 -- input 
@@ -377,8 +435,7 @@ end
 
 --------------------------------
 
-function blink()
- local blinkframes={8,4,4,20,4,4}
+function blink(blinkframes)
  local blinkclr={}
  local clrs={0,1,13,7,13,1}
  for i=1,#blinkframes do
@@ -444,43 +501,58 @@ function starmoving()
  end
 end
 -->8
+--waves and enemies
+
+function spawnwave()
+ spawnenemy()
+end
+
+function nextwave()
+ wave+=1
+ if wave>4 then
+  mode="win"
+ else
+	 mode ="wavetxt"
+	 wavetime=64
+ end
+ 
+end
+
+
 -- enemies
 
-function enemiesinit()
- for i=1,3 do
-  spawnenemy()
- end
-end
+
 
 function spawnenemy()
  local enm = {
-  x=120,y=flr(rnd(128)-8),
-  spr=35,spd=1,dir=1,
+  x=128,y=flr(rnd(104)+10),
+  spr=35,spd=1,
   hp=3,flash=0}
  add(enemies, enm)
 end
 
 function animenemies()
  for enm in all(enemies) do
-	 enm.y+=enm.spd*enm.dir
+	 enm.x-=enm.spd
 --	 enm.x+=rnd(2)-1
 	 
 	 --move up and down
-	 if enm.y >=120 then
-	  enm.dir = -1
-	 elseif enm.y <= 8 then
-	  enm.dir = 1
-	 end
+--	 if enm.y >=120 then
+--	  enm.dir = -1
+--	 elseif enm.y <= 8 then
+--	  enm.dir = 1
+--	 end
   
   -- sprite
   enm.spr += 0.5
   if enm.spr >= 42 then
    enm.spr = 35
   end
- end
- 
- if #enemies < 3 then 
-  spawnenemy()
+  
+  if enm.x <=-8 then
+   del(enemies,enm)
+  end
+  
  end
  
 end
@@ -516,7 +588,8 @@ function colcheck()
 	   lives-=1
 	   sfx(5)
 	   explosion(ship.x,ship.y,{13,5,12},15)
-	   del(enemies,enm)
+	   --del(enemies,enm)
+	   enm.hp-=1
 	   inv=invtime
 	  end
 	 end
@@ -530,12 +603,17 @@ function colcheck()
     enm.hp-=1
     enm.flash=3
     if enm.hp<=0 then
-   	 explosion(enm.x,enm.y,{10,7,9},10)
+   	 explosion(enm.x,enm.y,{10,7,9},20)
     	sfx(4)
     	del(enemies,enm)
+    	
+    	if #enemies == 0 then 
+    	 nextwave()
+    	end
+    	
     else
      sfx(6)
-     shwave(bul.x+7,bul.y+4,2,6,7,1,25)
+     shwave(bul.x+7,bul.y+4,2,6,7,1,10)
     end
     del(bullets,bul)
    end
@@ -547,25 +625,25 @@ end
 function explosion(coordx,coordy,clrchoice,q_p)
 
  shwave(coordx,coordy,3,25,7,3,25)
- for i=1,15 do
- local expl = 
-  {x=coordx+flr(rnd(16)-3),
-  y=coordy+flr(rnd(16)-3),
+ for i=1,25 do
+ local expl = {
+  x=coordx+(rnd()-0.5)*5,
+  y=coordy+(rnd()-0.5)*5,
   r=flr(rnd(5)+3),
   clr=clrchoice[flr(rnd(3)+1)],
   sx=(rnd()-0.5) *4,
   sy=(rnd()-0.5) *4,
-  hp=15}
+  hp=15 }
  add(explosions,expl)
  end
  for i=1, q_p do
  	local p = 
-	  {x=coordx+flr(rnd(20)-5),
-	  y=coordy+flr(rnd(20)-5),
+	  {x=coordx+(rnd()-0.5)*5,
+	  y=coordy+(rnd()-0.5)*5,
 	  sx=(rnd()-0.5) *3,
 	  sy=(rnd()-0.5) *3,
 	  clr = clrchoice[rnd(3)+1], 
-	  hp=7}
+	  hp=12}
 	 add(part,p)
  end 
 
@@ -582,7 +660,7 @@ function shwave(shx,shy,r,tr,clr,spd,q_p)
 	  sx=(rnd()-0.5) *3*spd,
 	  sy=(rnd()-0.5) *3*spd,
 	  clr = 7, 
-	  hp=rnd(10)+10}
+	  hp=rnd(10)+3}
 	 add(part,p)
  end 
  
@@ -610,8 +688,8 @@ function animexpl()
   p.hp-=1
   p.x += p.sx
 	 p.y += p.sy
-	 --p.sx*=0.7
-	 --p.sy*=0.7
+	 p.sx*=0.9
+	 p.sy*=0.9
 	 
   if p.hp<=0 then
    del(part,p)
