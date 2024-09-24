@@ -9,6 +9,8 @@ function _init()
  blinkt=0
  transt = 0
  music(0)
+ globalt=0
+ lockout=0
  
 end
 
@@ -64,6 +66,7 @@ end
 function _update()
  
  blinkt += 1
+ globalt += 1/30
 	if mode == "game" then
 	 update_game()
 	elseif mode == "start" then
@@ -99,10 +102,15 @@ function update_game()
  
  if lives <= 0 then
   mode = "over"
+  lockout=globalt+1
   music(-1,500)
   music(1)
   return
  end
+ 
+ if mode=="game" and #enemies == 0 then 
+	 nextwave()
+	end
  
 end
 
@@ -121,6 +129,10 @@ function update_start()
 end
 
 function update_over()
+ if globalt<lockout then
+  return
+ end
+ 
  if btn(5) == false then
   btnreleased = true
 	end
@@ -153,6 +165,9 @@ function update_wavetxt()
 end
 
 function update_win()
+ if globalt<lockout then
+  return
+ end
 	if btn(5) == false then
   btnreleased = true
 	end
@@ -361,15 +376,11 @@ function shoot()
  end
 end
 
---------------------------------
-
 function timepassing()
  t+=1/30
  minutes = t/60
  seconds= t%60
 end
-
---------------------------------
 
 -->8
 -- animations and ui
@@ -386,23 +397,17 @@ function animflame()
  end
 end
 
---------------------------------
-
 function muzzleupdt() -- update
  if muzzle>0 then
   muzzle -= 1
  end
 end
 
---------------------------------
-
 function muzzledraw() -- draw
  if muzzle > 0 then
   circfill(ship.x+11,ship.y+3,muzzle,7)
  end
 end
-
---------------------------------
 
 function animbullet()
  for blt in all(bullets) do
@@ -412,8 +417,6 @@ function animbullet()
   end
  end
 end
- 
---------------------------------
 
 function uitimer()
  -- ui
@@ -434,8 +437,6 @@ function uitimer()
   end
  end
 end
-
---------------------------------
 
 function uilives()
  sprheartfull = 32
@@ -525,13 +526,14 @@ end
 --waves and enemies
 
 function spawnwave()
- spawnenemy(4)
+ spawnenemy(wave)
 end
 
 function nextwave()
  wave+=1
  if wave>4 then
   mode="win"
+  lockout=globalt+1
   music(-1,500)
   music(5)
  else
@@ -575,7 +577,7 @@ function spawnenemy(tp)
   	for i=70,79 do
   	 add(enm.anim,i)
   	end
-   enm.hp=8
+   enm.hp=3
    
    --enm.animspd=0.45
    
@@ -583,7 +585,7 @@ function spawnenemy(tp)
   	for i=96,106,2 do
   	 add(enm.anim,i)
   	end
-   enm.hp=10
+   enm.hp=3
    enm.r=14
    enm.t=2
    enm.b=14
@@ -662,10 +664,6 @@ function colcheck()
    	 explosion(enm.x,enm.y,{10,7,9},20)
     	sfx(4)
     	del(enemies,enm)
-    	
-    	if #enemies == 0 then 
-    	 nextwave()
-    	end
     	
     else
      sfx(6)
