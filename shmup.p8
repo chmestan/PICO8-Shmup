@@ -108,7 +108,14 @@ function update_game()
   return
  end
  
- pick()
+ if wave==1 then
+  for enm in all(enemies) do
+   if enm.mission == "hover" then
+    enm.mission = "attack"
+   end
+   circlemvmt(enm)
+  end
+ end
  
  if mode=="game" and #enemies == 0 then 
 	 nextwave()
@@ -454,8 +461,6 @@ function uilives()
  spr(34,2+maxlives*8,y)
 end
 
---------------------------------
-
 function blink(blinkframes)
  local blinkclr={}
  local clrs={0,1,13,7,13,1}
@@ -531,18 +536,12 @@ function spawnwave()
  --spawnenemy(wave)
  if wave == 1 then 
   placeenm({
-  {1,1,1},
-  {1,0,1},
-  {1,1,1}})
---  {0,0,0},
---  {1,1,1},
---  {1,0,1},
---  {1,1,1}})
+  {0,1,1,0},
+  {1,1,1,1},
+  {1,1,1,1},
+  {0,1,1,0}})
  elseif wave == 2 then
-  placeenm({
-  {1,1,1},
-  {1,0,1},
-  {1,1,1}})
+ --
  end
 end
 
@@ -568,7 +567,7 @@ function spawnenemy(tp,enx,eny,enwait)
   posy=eny,
   mission="flyin",
   wait=enwait,
-  spd=3,
+  spd=1,
   flash=0,
   animspd=0.3,
   anim={},
@@ -586,7 +585,7 @@ function spawnenemy(tp,enx,eny,enwait)
   	 add(enm.anim,i)
   	end
   	enm.b=6
-   enm.hp=3
+   enm.hp=2
    
   elseif tp == 2 then
   	for i=64,69 do
@@ -828,31 +827,23 @@ function doenemy(enm)
 	end
 
  if enm.mission == "flyin" then
- 
-	 enm.x+=(enm.posx-enm.x)/8
-	 enm.y+=(enm.posy-enm.y)/8
-		  
-	  if abs(enm.posx-enm.x)<0.1 and 
-	   abs(enm.posy-enm.y)<0.1
-	   then
-	    return true
-	  end
+  
+  tween(enm,8)
 	  
  elseif enm.mission == "hover" then
   
  elseif enm.mission == "attack" then
-  enm.y+=1
+  targetplayer(enm)
  end
 end
 
-function pick()
- atckf=30
-
+function pick(freq)
+ 
  if mode != "game" then
   return
  end
  
- if globalt%atckf == 29 then
+ if globalt%freq == flr(freq/2) then
  
 	 local hovenm = {}
 	 for enm in all(enemies) do
@@ -870,25 +861,35 @@ function pick()
  end
 end
 
--- function mvmtwave1()
---  for enm in all(enemies) do
--- 	 enm.angle+=cspd
---   enm.x=cx+cos(enm.angle)*crad
---   enm.y=cy+sin(enm.angle)*crad
---  end
--- end
-
-function tween(x,y,tx,ty,spd)
-x+=(tx-x)/spd
-y+=(ty-y)/spd
+function tween(e,spd)
+	e.x+=(e.posx-e.x)/spd
+	e.y+=(e.posy-e.y)/spd
 	  
-  if abs(x-tx)<0.1 and 
-   abs(y-ty)<0.1
+  if abs(e.posx-e.x)<0.3 and 
+   abs(e.posy-e.y)<0.3
    then
-    return true
+    e.mission = "hover"
   end
 end
 
+function targetplayer(enm)
+ dirx = ship.x - enm.x
+ diry = ship.y - enm.y
+
+ magn = sqrt(dirx*dirx+diry*diry)
+ normx = dirx / magn
+ normy = diry / magn
+
+ enm.x += normx * enm.spd
+ enm.y += normy * enm.spd/2
+end
+
+function circlemvmt(enm)
+	 
+ enm.x += (rnd() - 0.5)
+ enm.y += (rnd() - 0.5)
+
+end
 __gfx__
 000000002ee900002ee9000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000128e9a00128e9a002ee90000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
