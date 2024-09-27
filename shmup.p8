@@ -27,16 +27,18 @@ function startgame()
   sx=1,sy=2,
   spr=1,
   w=1,h=1}
+  
+ canshoot=false
 
-	speedx=1.5
+	speedx=2
 	speedy=2
  
  --anim
  flamespr=6
  muzzle=0
 
- lives = 1
  maxlives = 5
+ lives = maxlives
 
  t=0
  minutes = 0
@@ -87,6 +89,7 @@ function update_game()
 
  timershoot+=1
 
+
  input()
  shoot()
 
@@ -110,10 +113,11 @@ function update_game()
  
  if wave==1 then
   for enm in all(enemies) do
-   if enm.mission == "hover" then
+   if enm.mission == "attack" then
+    mvmt1(enm)
+   elseif enm.mission == "hover" then
     enm.mission = "attack"
-   end
-   circlemvmt(enm)
+   end 
   end
  end
  
@@ -168,7 +172,8 @@ function update_wavetxt()
  update_game()
  wavetime-=1
  if wavetime <= 0 then
- 	spawnwave()
+ 	spawnwave(wave)
+ 	canshoot=true
   mode ="game"
  end
 end
@@ -277,7 +282,7 @@ function draw_over()
 end
 
 function draw_trans()
- local screenclr=2
+ local screenclr=8
  if transt < 32 then
 	 for i=0,8 do
 	   for j=0,8 do
@@ -339,8 +344,16 @@ function input()
   ship.spr=3
  end
  
- ship.x += ship.sx
- ship.y += ship.sy
+ if ship.sx != 0 and ship.sy != 0 then
+  local magn = sqrt(ship.sx^2 + ship.sy^2)
+  ship.sx /= magn
+  ship.sy /= magn
+  ship.sx *= speedx*1.1
+  ship.sy *= speedy*1.1
+ end
+ 
+	ship.x = flr(ship.x + ship.sx + 0.5)
+ ship.y = flr(ship.y + ship.sy + 0.5) 
  
  for blt in all(bullets) do
    blt.x += blt.spd
@@ -371,17 +384,17 @@ end
 function shoot()
  local freq=5
  
- if btn(5) and timershoot>=freq then
-  local newblt = 
-   {x=ship.x+9,y=ship.y,spr=48,
-   spd=3,w=1,h=1}
-  add (bullets,newblt)
-  timershoot=0
-  
-  muzzle=4
-  --local soundnb = flr(rnd(2))
-  --sfx(soundnb)
-  sfx(3)
+ if canshoot and btn(5) and timershoot>=freq then
+	  local newblt = 
+	   {x=ship.x+9,y=ship.y,spr=48,
+	   spd=3,w=1,h=1}
+	  add (bullets,newblt)
+	  timershoot=0
+	  
+	  muzzle=4
+	  --local soundnb = flr(rnd(2))
+	  --sfx(soundnb)
+	  sfx(3)
  end
 end
 
@@ -532,21 +545,21 @@ end
 -->8
 --waves and enemies
 
-function spawnwave()
- --spawnenemy(wave)
- if wave == 1 then 
+function spawnwave(nb)
+ if nb == 1 then 
   placeenm({
   {0,1,1,0},
   {1,1,1,1},
   {1,1,1,1},
-  {0,1,1,0}})
- elseif wave == 2 then
+  {0,1,1,0}},80,10)
+ elseif nb == 2 then
  --
  end
 end
 
 function nextwave()
  wave+=1
+ canshoot=false
  if wave>4 then
   mode="win"
   lockout=globalt+30
@@ -561,6 +574,7 @@ end
 
 function spawnenemy(tp,enx,eny,enwait)
  local enm = {
+  tp=tp,
   x=enx*1.5+30,
   y=eny*1.5-64,
   posx=enx,
@@ -586,6 +600,7 @@ function spawnenemy(tp,enx,eny,enwait)
   	end
   	enm.b=6
    enm.hp=2
+   enm.spd=1
    
   elseif tp == 2 then
   	for i=64,69 do
@@ -611,20 +626,30 @@ function spawnenemy(tp,enx,eny,enwait)
    enm.b=14
    enm.w=2
    enm.h=2
+   
+  elseif tp ==5 then
+   for i=128,143 do
+  	 add(enm.anim,i)
+  	end
+  	enm.hp=1
+  	enm.mission = "attack"
+  	enm.x=enm.posx
+  	enm.y=enm.posy
+  	enm.spd=1
   end
   
  add(enemies, enm)
 end
 
-function placeenm(lvl)
+function placeenm(lvl,x,y)
  sfx(33)
  for i=1,#lvl do --rows
   for j=1,#lvl[i] do --columns
    if lvl[i][j]!= 0 then
 	   spawnenemy(
 	   lvl[i][j],
-	   80+j*8+j*1,
-	   10+i*8+i*1,
+	   x+j*8+j*1,
+	   y+i*8+i*1,
 	   i*3)
 	  end
   end
@@ -686,6 +711,7 @@ function colcheck()
 	   --del(enemies,enm)
 	   enm.hp-=1
 	   inv=invtime
+	   return
 	  end
 	 end
 	elseif inv > 0 then
@@ -700,6 +726,9 @@ function colcheck()
     if enm.hp<=0 then
    	 explosion(enm.x,enm.y,{10,7,9},20)
     	sfx(4)
+    	if enm.tp == 1 and globalt%2 == 0 then
+    		divide(enm,5)
+    	end
     	del(enemies,enm)
     	
     else
@@ -884,11 +913,16 @@ function targetplayer(enm)
  enm.y += normy * enm.spd/2
 end
 
-function circlemvmt(enm)
-	 
- enm.x += (rnd() - 0.5)
- enm.y += (rnd() - 0.5)
+function mvmt1(enm)
+ local rndf = flr(rnd(2)+1)
+ if globalt%rndf == 0 then	 
+		enm.x += (rnd() - 0.5)*3
+		enm.y += (rnd() - 0.5)*3
+ end
+end
 
+function divide(enm,tp)
+  spawnenemy(tp,enm.x,enm.y+15,0)
 end
 __gfx__
 000000002ee900002ee9000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -955,13 +989,13 @@ d660066d66600666000000000000000066600666d660066d08888888088888880888888e088888e8
 00e00f000f00e00000e0f00000f0e000e00f0000000f0e00000ef00000fe00000f000f000f000f0000f00f000f00f00000000000000000000000000000000000
 000e0e000e0e000000000e000e0000000e0e0000000e00000000000000000000000ef00000fe000000e00f000f00e00000000000000000000000000000000000
 000000e0e000000000000000000000000000e00000e000000000000000000000000000000000000000000e000e00000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000007070000000000000000000000707000000000000000000000000070700000000000000000000000070700
+007c700000c000007c7000007070000000007e700000e000007e700000e000007e700800707787000008000007870000080000000000000000007c000000c000
+0000000006060000000000000c000e0000000000000000000000000006067870000000000e00000000606000000000000000000078700c000000000000000000
+000000000000707000007e70000060607c70000000000000000008000000000000000000000000007e7000000000707000007c70000060600800000000000000
+7070000000000e000000000000000000000070700c00787000006060070700000000000000000000000000000e000c0000000000070700006060000078700000
+08007e7007870000000800000007870000000800606000007c70000000c00000007c70000000c00000007c706060000078700000008000000078700000008000
+00000000000000000060700000000000000000000000000000000000000000000000000000060600000000000000000000000000000000000000000000060600
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
