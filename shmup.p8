@@ -19,7 +19,7 @@ function startgame()
  
  music(2)
  
- wave=1
+ wave=2
  wavetime=64
  
  ship=
@@ -111,15 +111,13 @@ function update_game()
   return
  end
  
- if wave==1 then
-  for enm in all(enemies) do
-   if enm.mission == "attack" then
-    mvmt1(enm)
-   elseif enm.mission == "hover" then
-    enm.mission = "attack"
-   end 
-  end
- end
+-- if wave==1 or wave == 2 then
+--  for enm in all(enemies) do
+--   if enm.mission == "hover" then
+--    enm.mission = "attack"
+--   end 
+--  end
+-- end
  
  if mode=="game" and #enemies == 0 then 
 	 nextwave()
@@ -548,12 +546,16 @@ end
 function spawnwave(nb)
  if nb == 1 then 
   placeenm({
-  {0,1,1,0},
-  {1,1,1,1},
-  {1,1,1,1},
-  {0,1,1,0}},80,10)
+  {1,1},
+  {1,1}},80,20)
+  placeenm({
+  {1,1},
+  {1,1}},80,83)
  elseif nb == 2 then
- --
+  placeenm({
+	  {2,2,2,2,2}},75,20)
+	 placeenm({
+	  {2,2,2,2,2}},1,80)
  end
 end
 
@@ -600,13 +602,17 @@ function spawnenemy(tp,enx,eny,enwait)
   	end
   	enm.b=6
    enm.hp=2
-   enm.spd=1
    
   elseif tp == 2 then
   	for i=64,69 do
   	 add(enm.anim,i)
   	end
    enm.hp=5
+   if #enemies >=5 then
+    enm.spd = -1
+--    enm.x=enx*1.5+5
+-- 		 enm.y=eny*1.5-5
+   end
    
   elseif tp == 3 then
   	for i=70,79 do
@@ -635,7 +641,6 @@ function spawnenemy(tp,enx,eny,enwait)
   	enm.mission = "attack"
   	enm.x=enm.posx
   	enm.y=enm.posy
-  	enm.spd=1
   end
   
  add(enemies, enm)
@@ -862,7 +867,7 @@ function doenemy(enm)
  elseif enm.mission == "hover" then
   
  elseif enm.mission == "attack" then
-  targetplayer(enm)
+  enemymvmt(enm,wave)
  end
 end
 
@@ -897,7 +902,7 @@ function tween(e,spd)
   if abs(e.posx-e.x)<0.3 and 
    abs(e.posy-e.y)<0.3
    then
-    e.mission = "hover"
+    e.mission = "attack"
   end
 end
 
@@ -913,11 +918,27 @@ function targetplayer(enm)
  enm.y += normy * enm.spd/2
 end
 
+function enemymvmt(enm,nb)
+ if nb==1 then
+  targetplayer(enm)
+  mvmt1(enm)
+ elseif nb==2 then
+  mvmt2(enm)
+ end
+end
+
 function mvmt1(enm)
  local rndf = flr(rnd(2)+1)
  if globalt%rndf == 0 then	 
 		enm.x += (rnd() - 0.5)*3
 		enm.y += (rnd() - 0.5)*3
+ end
+end
+
+function mvmt2(enm)
+ enm.x-=enm.spd
+ if enm.x<=-8 then
+  enm.x = 129
  end
 end
 
