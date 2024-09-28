@@ -111,14 +111,10 @@ function update_game()
   return
  end
  
--- if wave==1 or wave == 2 then
---  for enm in all(enemies) do
---   if enm.mission == "hover" then
---    enm.mission = "attack"
---   end 
---  end
--- end
- 
+ if wave == 2 then
+  pick(60)
+ end
+
  if mode=="game" and #enemies == 0 then 
 	 nextwave()
 	end
@@ -547,15 +543,17 @@ function spawnwave(nb)
  if nb == 1 then 
   placeenm({
   {1,1},
-  {1,1}},80,20)
+  {1,1}},80,20,8,1)
   placeenm({
   {1,1},
-  {1,1}},80,83)
+  {1,1}},80,83,8,1)
  elseif nb == 2 then
   placeenm({
-	  {2,2,2,2,2}},75,20)
+	  {2,2,2,2,2}},70,30,8,1)
 	 placeenm({
-	  {2,2,2,2,2}},1,80)
+	  {2,2,2,2,2}},70,64,8,1)
+	 placeenm({
+	  {2,2,2,2,2}},70,98,8,1)
  end
 end
 
@@ -577,8 +575,8 @@ end
 function spawnenemy(tp,enx,eny,enwait)
  local enm = {
   tp=tp,
-  x=enx*1.5+30,
-  y=eny*1.5-64,
+  x=enx*2+30,
+  y=eny*2-64,
   posx=enx,
   posy=eny,
   mission="flyin",
@@ -607,9 +605,10 @@ function spawnenemy(tp,enx,eny,enwait)
   	for i=64,69 do
   	 add(enm.anim,i)
   	end
-   enm.hp=5
-   if #enemies >=5 then
-    enm.spd = -1
+   enm.hp=3
+   enm.spd=2
+   if #enemies >=5 and #enemies <10 then
+    enm.spd = -2
 --    enm.x=enx*1.5+5
 -- 		 enm.y=eny*1.5-5
    end
@@ -646,16 +645,16 @@ function spawnenemy(tp,enx,eny,enwait)
  add(enemies, enm)
 end
 
-function placeenm(lvl,x,y)
+function placeenm(lvl,x,y,sprsize,offset)
  sfx(33)
  for i=1,#lvl do --rows
   for j=1,#lvl[i] do --columns
    if lvl[i][j]!= 0 then
 	   spawnenemy(
 	   lvl[i][j],
-	   x+j*8+j*1,
-	   y+i*8+i*1,
-	   i*3)
+	   x+(j-1)*(sprsize+offset),
+	   y+(i-1)*(sprsize+offset),
+	   (i-1)*3)
 	  end
   end
  end
@@ -665,7 +664,6 @@ end
 function animenemies()
  for enm in all(enemies) do
   doenemy(enm)
-	 --enm.x-=enm.spd
   
   enm.frm += enm.animspd
   if flr(enm.frm) > #enm.anim then
@@ -673,10 +671,6 @@ function animenemies()
   end
   
   enm.spr=enm.anim[flr(enm.frm)]
-  
-  if enm.x <=-8 then
-   del(enemies,enm)
-  end
   
  end
  
@@ -859,15 +853,17 @@ function doenemy(enm)
 	 enm.wait -=1
 	 return
 	end
+	
+	switchmove()
 
  if enm.mission == "flyin" then
-  
   tween(enm,8)
-	  
  elseif enm.mission == "hover" then
-  
- elseif enm.mission == "attack" then
+  --
+ elseif enm.mission == "move" then
   enemymvmt(enm,wave)
+ elseif enm.mission == "attack" then
+  targetplayer(enm,2,2)
  end
 end
 
@@ -879,18 +875,16 @@ function pick(freq)
  
  if globalt%freq == flr(freq/2) then
  
-	 local hovenm = {}
+	 local moveen = {}
 	 for enm in all(enemies) do
-	  if enm.mission=="hover" then
-	   add(hovenm,enm)
+	  if enm.mission=="move" then
+	   add(moveen,enm)
 	  end
 	 end 
  
-  if #hovenm > 0 then
-	  local enm = rnd(hovenm)
-		 if enm.mission =="hover" then
-		  enm.mission ="attack"
-	 	end
+  if #moveen > 0 then
+	  local enm = rnd(moveen)
+	  enm.mission = "attack"
  	end
  end
 end
@@ -902,20 +896,24 @@ function tween(e,spd)
   if abs(e.posx-e.x)<0.3 and 
    abs(e.posy-e.y)<0.3
    then
-    e.mission = "attack"
+    e.x = e.posx
+    e.y = e.posy
+    e.mission = "hover"
   end
 end
 
-function targetplayer(enm)
+function targetplayer(enm,smodifx,smodify)
  dirx = ship.x - enm.x
  diry = ship.y - enm.y
 
  magn = sqrt(dirx*dirx+diry*diry)
+ magn = max(magn, 0.1)
+ 
  normx = dirx / magn
  normy = diry / magn
 
- enm.x += normx * enm.spd
- enm.y += normy * enm.spd/2
+ enm.x += normx * abs(enm.spd)/smodifx
+ enm.y += normy * abs(enm.spd)/smodify
 end
 
 function enemymvmt(enm,nb)
@@ -936,14 +934,33 @@ function mvmt1(enm)
 end
 
 function mvmt2(enm)
- enm.x-=enm.spd
- if enm.x<=-8 then
-  enm.x = 129
+
+ enm.x += enm.spd
+
+ if enm.x < -8 then  
+   enm.x = 128       
+ elseif enm.x > 128 then 
+   enm.x = -8      
  end
+ enm.x = flr(enm.x + 0.5)
+
+ --sin on y axis
+ 
 end
 
 function divide(enm,tp)
   spawnenemy(tp,enm.x,enm.y+15,0)
+end
+
+function switchmove()
+ for enm in all(enemies) do
+  if enm.mission != "hover" then
+   return
+  end
+ end
+ for enm in all(enemies) do
+  enm.mission = "move"
+ end
 end
 __gfx__
 000000002ee900002ee9000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
